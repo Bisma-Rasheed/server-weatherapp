@@ -1,5 +1,3 @@
-const validator = require('validator');
-
 module.exports = (mongoose) => {
     const socketUser = new mongoose.Schema({
         socketID: String,
