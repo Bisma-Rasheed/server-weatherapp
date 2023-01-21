@@ -1,30 +1,101 @@
 const route = require('express').Router();
 const mongoose = require('mongoose');
 const { hashSync, genSaltSync, compareSync } = require('bcrypt');
+const dotenv = require('dotenv');
+const request = require('request');
+const axios = require('axios');
+const fs = require('fs');
 
-const weatherSchema = require('../model/weathermodel')(mongoose);
+dotenv.config();
+
+const weatherSchema = require('../model/usermodel')(mongoose);
+const citiesSchema = require('../model/citiesmodel')(mongoose);
 const weatherApp = new mongoose.model('weatherdata', weatherSchema);
+const citiesModel = new mongoose.model('cities', citiesSchema);
 
 
-route.get('/', (req, res) => {
-    res.send({ messgae: 'hello from server' });
-});
+async function firstFetch(city) {
+    if(city){
+        var cities = JSON.parse(fs.readFileSync('cities.json'));
+        cities.push(city);
+        fs.writeFileSync("cities.json", JSON.stringify(cities));
+    }
+    var cities = JSON.parse(fs.readFileSync('cities.json'));
+   
+    for (var i = 0; i < cities.length; i++) {
+        try {
+            const weather = await axios.get(`https://api.openweathermap.org/data/2.5/weather?q=${cities[i]}&appid=${process.env.appID}&units=metric`);
+            const checkCity = await citiesModel.find({ name: cities[i]});
+            if (checkCity[0] === undefined) {
+                const addCity = new citiesModel({
+                    name: weather.data.name.toLowerCase(),
+                    icon: weather.data.weather[0].icon,
+                    temp: weather.data.main.temp,
+                    feels: weather.data.main.feels_like,
+                    descr: weather.data.weather[0].description,
+                    pressure: weather.data.main.pressure,
+                    humidity: weather.data.main.humidity
+                });
+                const result = await addCity.save();
+            }
+            else {
+                const _id = checkCity[0]._id;
+                const result = await citiesModel.findByIdAndUpdate(
+                    { _id },
+                    {
+                        $set: {
+                            icon: weather.data.weather[0].icon,
+                            temp: weather.data.main.temp,
+                            feels: weather.data.main.feels_like,
+                            descr: weather.data.weather[0].description,
+                            pressure: weather.data.main.pressure,
+                            humidity: weather.data.main.humidity
+                        }
+                    },
+                    { new: true }
+                )
+            }
+
+        }
+        catch (err) {
+            console.log(err)
+        }
+    }
+}
+
+firstFetch();
 
 route.post('/adduser', async (req, res) => {
+    const cities = [{ name: 'karachi', tempUnit: 'C' },
+    { name: 'lahore', tempUnit: 'C' },
+    { name: 'islamabad', tempUnit: 'C' },
+    { name: 'quetta', tempUnit: 'C' },
+    { name: 'peshawar', tempUnit: 'C' }];
     const salt = genSaltSync(10);
     const password = hashSync(req.body.password, salt);
 
-    var userData = await weatherApp.find({ username: req.body.username });
+    var userData = await weatherApp.find({ email: req.body.email });
+    console.log(userData[0]);
     if (userData[0] === undefined) {
-        const addUser = new weatherApp({
-            socketID: 'abc',
-            email: req.body.email,
-            username: req.body.username,
-            password: password
-        });
+        console.log('i am here')
+        try {
+            const addUser = new weatherApp({
+                socketID: 'abc',
+                email: req.body.email,
+                username: req.body.username,
+                password: password,
+                city: cities
+                // temp: req.body.temp
+            });
 
-        const result = await addUser.save();
-        res.send({ message: "user added" });
+            const result = await addUser.save();
+            console.log('user saved');
+            res.send({ message: "user added" });
+        }
+        catch (err) {
+            console.log(err)
+        }
+
     }
     else {
         res.send({ message: 'user not added, already exists' });
@@ -36,8 +107,23 @@ route.post('/readuser', async (req, res) => {
     var userData = await weatherApp.find({ email: req.body.email });
     if (userData[0] !== undefined) {
         const isvalidPassword = compareSync(req.body.password, userData[0].password);
+        var cityArr = [];
         if (isvalidPassword) {
-            res.send({ data: userData[0] });
+            
+            for(var i=0; i<userData[0].city.length;i++)
+            {
+                var cityData = await citiesModel.find({name: userData[0].city[i].name});
+                cityArr.push(cityData)
+            }
+            var obj = {
+                socketID: userData[0].socketID,
+                email: userData[0].email,
+                username: userData[0].username,
+                city: cityArr
+            }
+            console.log(cityArr);
+            //console.log('user sent')
+            res.send({ data: obj });
         }
         else {
             res.send({ error: 'The password is incorrect' });
@@ -52,28 +138,54 @@ route.post('/addcity', async (req, res) => {
     var userData = await weatherApp.find({ email: req.body.email });
 
     const city = req.body.city.toLowerCase();
-    const cond = (value) => value !== city;
+    const cond = (value) => value.name !== city;
     const cityNotExist = userData[0].city.every(cond);
     const _id = userData[0]._id;
     if (cityNotExist) {
+        var obj = {
+            name: city,
+            tempUnit: req.body.tempunit
+        }
         var userData = await weatherApp.findByIdAndUpdate(
             { _id },
             {
                 $push: {
-                    city: city,
-                    temp: req.body.tempunit
+                    city: obj
                 }
             },
             { new: true }
         );
+        //const result = await citiesModel
+        firstFetch(city);
         res.send({ data: userData });
     }
     else {
         res.send({ message: 'city already exists' });
     }
 
-    
+
 });
 
+
+route.post('/getcitydata', async (req, res) => {
+
+    try {
+        const weather = await axios.get(`https://api.openweathermap.org/data/2.5/weather?q=${req.body.city}&appid=${process.env.appID}&units=metric`);
+        //console.log(weather.data);
+        var obj = {
+            name: weather.data.name,
+            icon: weather.data.weather[0].icon,
+            temp: weather.data.main.temp,
+            feels: weather.data.main.feels_like,
+            descr: weather.data.weather[0].description,
+            pressure: weather.data.main.pressure,
+            humidity: weather.data.main.humidity
+        }
+        res.send({ data: obj });
+    }
+    catch (err) {
+        console.log(err)
+    }
+});
 
 module.exports = route;

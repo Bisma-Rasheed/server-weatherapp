@@ -1,5 +1,11 @@
 const express = require('express');
 const app = express();
+const http = require('http');
+const server = http.createServer(app);
+const { Server } = require('socket.io');
+const io = new Server(server);
+const axios = require('axios');
+
 const dotenv = require('dotenv');
 const routes = require('./controller/routesController');
 const cors = require('cors');
@@ -21,6 +27,19 @@ mongoose.connect(`mongodb+srv://BismaRasheed:bisma@cluster0.pnt338c.mongodb.net/
 
 app.use('/', routes);
 
-app.listen(process.env.PORT, ()=>{
+io.on('connection', (socket) => {
+    console.log('a user connected');
+
+    socket.on('disconnect', () => {
+        console.log('user disconnected');
+    })
+    socket.on('chat message', (msg) => {
+        console.log('message: ' + msg);
+        socket.broadcast.emit('chat message', msg);
+    });
+
+});
+
+server.listen(process.env.PORT, () => {
     console.log(`server listening on ${process.env.PORT}`);
 });
