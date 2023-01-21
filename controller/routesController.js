@@ -15,17 +15,22 @@ const citiesModel = new mongoose.model('cities', citiesSchema);
 
 
 async function firstFetch(city) {
-    if(city){
+    if (city) {
         var cities = JSON.parse(fs.readFileSync('cities.json'));
-        cities.push(city);
-        fs.writeFileSync("cities.json", JSON.stringify(cities));
+        const cond = (value) => value !== city;
+        const cityNotExist = cities.every(cond);
+
+        if (cityNotExist) {
+            cities.push(city);
+            fs.writeFileSync("cities.json", JSON.stringify(cities));
+        }
     }
     var cities = JSON.parse(fs.readFileSync('cities.json'));
-   
+
     for (var i = 0; i < cities.length; i++) {
         try {
             const weather = await axios.get(`https://api.openweathermap.org/data/2.5/weather?q=${cities[i]}&appid=${process.env.appID}&units=metric`);
-            const checkCity = await citiesModel.find({ name: cities[i]});
+            const checkCity = await citiesModel.find({ name: cities[i] });
             if (checkCity[0] === undefined) {
                 const addCity = new citiesModel({
                     name: weather.data.name.toLowerCase(),
@@ -109,11 +114,20 @@ route.post('/readuser', async (req, res) => {
         const isvalidPassword = compareSync(req.body.password, userData[0].password);
         var cityArr = [];
         if (isvalidPassword) {
-            
-            for(var i=0; i<userData[0].city.length;i++)
-            {
-                var cityData = await citiesModel.find({name: userData[0].city[i].name});
-                cityArr.push(cityData)
+
+            for (var i = 0; i < userData[0].city.length; i++) {
+                var cityData = await citiesModel.find({ name: userData[0].city[i].name });
+                if(userData[0].city[i].tempUnit==="C"){
+                    //cityData[0].tempUnit = "C";
+                    cityData[0].temp = cityData[0].temp+'C';
+                    cityArr.push(cityData[0])
+                }
+                else{
+                    //cityData[0].tempUnit = "F";
+                    cityData[0].temp = Number((cityData[0].temp*1.8)+32)+'F';
+                    cityArr.push(cityData[0]);
+                }
+                
             }
             var obj = {
                 socketID: userData[0].socketID,
@@ -144,7 +158,7 @@ route.post('/addcity', async (req, res) => {
     if (cityNotExist) {
         var obj = {
             name: city,
-            tempUnit: req.body.tempunit
+            tempUnit: req.body.tempUnit.toUpperCase()
         }
         var userData = await weatherApp.findByIdAndUpdate(
             { _id },

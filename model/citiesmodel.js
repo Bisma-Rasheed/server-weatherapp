@@ -2,7 +2,7 @@ module.exports = (mongoose) => {
     const cities = new mongoose.Schema({
         name: String,
         icon: String,
-        temp: Number,
+        temp: String,
         feels: Number,
         descr: String,
         pressure: Number,
