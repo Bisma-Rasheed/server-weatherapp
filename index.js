@@ -3,8 +3,12 @@ const app = express();
 const http = require('http');
 const server = http.createServer(app);
 const { Server } = require('socket.io');
-const io = new Server(server);
-const axios = require('axios');
+const io = new Server(server, {
+    cors: {
+      origin: "http://localhost:3000",
+      methods: ["GET", "POST"],
+    },
+  });
 
 const dotenv = require('dotenv');
 const routes = require('./controller/routesController');
@@ -25,18 +29,10 @@ mongoose.connect(`mongodb+srv://BismaRasheed:bisma@cluster0.pnt338c.mongodb.net/
     console.log('connection successful..');
 }).catch((err) => console.log(err));
 
-app.use('/', routes);
-
 io.on('connection', (socket) => {
     console.log('a user connected');
 
-    socket.on('disconnect', () => {
-        console.log('user disconnected');
-    })
-    socket.on('chat message', (msg) => {
-        console.log('message: ' + msg);
-        socket.broadcast.emit('chat message', msg);
-    });
+    app.use('/', routes.route(socket));
 
 });
 
