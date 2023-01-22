@@ -70,26 +70,43 @@ const returnRouter = function (socket) {
 
     firstFetch();
 
-    async function updateClients(userData){
+    async function updateClients(userData, city) {
         var cityArr = [];
+        if (city) {
+            firstFetch(city);
+        }
         firstFetch();
+        const now = new Date();
+        var time = 0;
+        if (now.getHours() > 12) {
+            time = `${now.getHours() - 12}:${now.getMinutes()}PM`;
+        }
+        else {
+            time = `${now.getHours()}:${now.getMinutes()}AM`;
+        }
+        currentTime = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()} - ${time}`;
         for (var i = 0; i < userData.city.length; i++) {
             var cityData = await citiesModel.find({ name: userData.city[i].name });
-            if (userData.city[i].tempUnit === "C") {
-                cityData[0].temp = cityData[0].temp + 'C';
-                cityArr.push(cityData[0])
+            if (cityData[0] !== undefined) {
+                if (userData.city[i].tempUnit === "C") {
+                    cityData[0].temp = cityData[0].temp + 'C';
+                    cityArr.push(cityData[0])
+                }
+                else {
+                    cityData[0].temp = Number((cityData[0].temp * 1.8) + 32) + 'F';
+                    cityArr.push(cityData[0]);
+                }
             }
-            else {
-                cityData[0].temp = Number((cityData[0].temp * 1.8) + 32) + 'F';
-                cityArr.push(cityData[0]);
-            }
+            continue;
+
 
         }
         var obj = {
             socketID: userData.socketID,
             email: userData.email,
             username: userData.username,
-            city: cityArr
+            city: cityArr,
+            fetchedAt: currentTime
         }
         return obj;
     }
@@ -99,18 +116,6 @@ const returnRouter = function (socket) {
     });
 
     socket.on('disconnect', async () => {
-        // console.log(socket.id);
-        // const user = await weatherApp.find({socketID: socket.id});
-        // //const _id = user._id;
-        // console.log(user);
-        // const user1 = await weatherApp.findByIdAndUpdate(
-        //     {_id},
-        //     {
-        //         $set: {socketID: 'abc'}
-        //     },
-        //     {new: true}
-        // );
-        // console.log(user1);
         console.log('user disconnected');
     });
 
@@ -123,14 +128,14 @@ const returnRouter = function (socket) {
     interval = setInterval(() => getApiAndEmit(socket), 5000);
 
     const getApiAndEmit = async socket => {
-        var socketUser = await weatherApp.find({socketID: socket.id});
-        
-        if(socketUser[0]!==undefined){
+        var socketUser = await weatherApp.find({ socketID: socket.id });
+
+        if (socketUser[0] !== undefined) {
             var updatedData = await updateClients(socketUser[0]);
             socket.emit('dataupdated', updatedData);
         }
-        
-      };
+
+    };
 
     route.post('/adduser', async (req, res) => {
         const cities = [{ name: 'karachi', tempUnit: 'C' },
@@ -183,21 +188,36 @@ const returnRouter = function (socket) {
 
                 for (var i = 0; i < userData.city.length; i++) {
                     var cityData = await citiesModel.find({ name: userData.city[i].name });
-                    if (userData.city[i].tempUnit === "C") {
-                        cityData[0].temp = cityData[0].temp + 'C';
-                        cityArr.push(cityData[0])
+                    if (cityData[0] !== undefined) {
+                        if (userData.city[i].tempUnit === "C") {
+                            cityData[0].temp = cityData[0].temp + 'C';
+                            cityArr.push(cityData[0])
+                        }
+                        else {
+                            cityData[0].temp = Number((cityData[0].temp * 1.8) + 32) + 'F';
+                            cityArr.push(cityData[0]);
+                        }
                     }
-                    else {
-                        cityData[0].temp = Number((cityData[0].temp * 1.8) + 32) + 'F';
-                        cityArr.push(cityData[0]);
-                    }
+                    continue;
+
 
                 }
+
+                const now  = new Date();
+                var time = 0;
+                if (now.getHours() > 12) {
+                    time = `${now.getHours() - 12}:${now.getMinutes()}PM`;
+                }
+                else {
+                    time = `${now.getHours()}:${now.getMinutes()}AM`;
+                }
+                currentTime = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()} - ${time}`;
                 var obj = {
                     socketID: userData.socketID,
                     email: userData.email,
                     username: userData.username,
-                    city: cityArr
+                    city: cityArr,
+                    fetchedAt: currentTime
                 }
                 res.send({ data: obj });
             }
@@ -231,32 +251,11 @@ const returnRouter = function (socket) {
                 },
                 { new: true }
             );
-            firstFetch(city);
+            var userData = await updateClients(userData, city);
             res.send({ data: userData });
         }
         else {
             res.send({ message: 'city already exists' });
-        }
-    });
-
-
-    route.post('/getcitydata', async (req, res) => {
-
-        try {
-            const weather = await axios.get(`https://api.openweathermap.org/data/2.5/weather?q=${req.body.city}&appid=${process.env.appID}&units=metric`);
-            var obj = {
-                name: weather.data.name,
-                icon: weather.data.weather[0].icon,
-                temp: weather.data.main.temp,
-                feels: weather.data.main.feels_like,
-                descr: weather.data.weather[0].description,
-                pressure: weather.data.main.pressure,
-                humidity: weather.data.main.humidity
-            }
-            res.send({ data: obj });
-        }
-        catch (err) {
-            console.log(err)
         }
     });
     return route;
