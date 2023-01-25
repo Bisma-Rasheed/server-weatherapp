@@ -137,6 +137,11 @@ const returnRouter = function (socket) {
 
     };
 
+    route.get('/', (req, res)=>{
+        res.send({message: 'hello from server"});
+    });
+        
+        
     route.post('/adduser', async (req, res) => {
         const cities = [{ name: 'karachi', tempUnit: 'C' },
         { name: 'lahore', tempUnit: 'C' },
