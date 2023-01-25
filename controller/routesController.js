@@ -79,10 +79,10 @@ const returnRouter = function (socket) {
         const now = new Date();
         var time = 0;
         if (now.getHours() > 12) {
-            time = `${now.getHours() - 12}:${now.getMinutes()}PM`;
+            time = `${now.getHours() - 12}:${now.getMinutes()}:${now.getSeconds()}PM`;
         }
         else {
-            time = `${now.getHours()}:${now.getMinutes()}AM`;
+            time = `${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}AM`;
         }
         currentTime = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()} - ${time}`;
         for (var i = 0; i < userData.city.length; i++) {
@@ -210,10 +210,10 @@ const returnRouter = function (socket) {
                 const now  = new Date();
                 var time = 0;
                 if (now.getHours() > 12) {
-                    time = `${now.getHours() - 12}:${now.getMinutes()}PM`;
+                    time = `${now.getHours() - 12}:${now.getMinutes()}:${now.getSeconds()}PM`;
                 }
                 else {
-                    time = `${now.getHours()}:${now.getMinutes()}AM`;
+                    time = `${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}AM`;
                 }
                 currentTime = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()} - ${time}`;
                 var obj = {
