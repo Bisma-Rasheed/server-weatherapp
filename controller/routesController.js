@@ -178,14 +178,15 @@ const returnRouter = function (socket) {
     route.post('/readuser', async (req, res) => {
 
         var userData = await weatherApp.find({ email: req.body.email });
-        const _id = userData[0]._id;
+        console.log(userData[0]);
+        if (userData[0] !== undefined) {
+            const _id = userData[0]._id;
+            var userData = await weatherApp.findByIdAndUpdate(
+                { _id },
+                { $set: { socketID: req.body.socketID } },
+                { new: true }
+            );
 
-        var userData = await weatherApp.findByIdAndUpdate(
-            { _id },
-            { $set: { socketID: req.body.socketID } },
-            { new: true }
-        );
-        if (userData !== undefined) {
             const isvalidPassword = compareSync(req.body.password, userData.password);
             var cityArr = [];
             if (isvalidPassword) {
@@ -236,7 +237,8 @@ const returnRouter = function (socket) {
 
     route.post('/addcity', async (req, res) => {
         var userData = await weatherApp.find({ email: req.body.email });
-
+        console.log(req.body.city);
+        console.log(req.body.tempUnit);
         const city = req.body.city.toLowerCase();
         const cond = (value) => value.name !== city;
         const cityNotExist = userData[0].city.every(cond);
