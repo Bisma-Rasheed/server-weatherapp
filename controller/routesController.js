@@ -78,12 +78,11 @@ const returnRouter = function (socket) {
         firstFetch();
         const now = new Date();
         var time = 0;
-        if (now.getHours() > 12) {
-            time = `${now.getHours() - 12}:${now.getMinutes()}:${now.getSeconds()}PM`;
-        }
-        else {
-            time = `${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}AM`;
-        }
+        var hours = (now.getHours() > 12) ? now.getHours() - 12 : now.getHours();
+        var minutes = (now.getMinutes() < 10) ? '0' + now.getMinutes() : now.getMinutes();
+        var seconds = (now.getSeconds() < 10) ? '0' + now.getSeconds() : now.getSeconds();
+
+        time = `${hours}:${minutes}:${seconds}PM`;
         currentTime = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()} - ${time}`;
         for (var i = 0; i < userData.city.length; i++) {
             var cityData = await citiesModel.find({ name: userData.city[i].name });
@@ -93,7 +92,7 @@ const returnRouter = function (socket) {
                     cityArr.push(cityData[0])
                 }
                 else {
-                    cityData[0].temp = Number((cityData[0].temp * 1.8) + 32) + 'F';
+                    cityData[0].temp = (Number((cityData[0].temp * 1.8) + 32).toFixed(2)) + 'F';
                     cityArr.push(cityData[0]);
                 }
             }
@@ -137,10 +136,10 @@ const returnRouter = function (socket) {
 
     };
 
-    route.get('/', (req, res)=>{
-        res.send({message: 'hello from server'});
+    route.get('/', (req, res) => {
+        res.send({ message: 'hello from server' });
     });
-        
+
     route.post('/adduser', async (req, res) => {
         const cities = [{ name: 'karachi', tempUnit: 'C' },
         { name: 'lahore', tempUnit: 'C' },
@@ -178,7 +177,6 @@ const returnRouter = function (socket) {
     route.post('/readuser', async (req, res) => {
 
         var userData = await weatherApp.find({ email: req.body.email });
-        console.log(userData[0]);
         if (userData[0] !== undefined) {
             const _id = userData[0]._id;
             var userData = await weatherApp.findByIdAndUpdate(
@@ -199,7 +197,7 @@ const returnRouter = function (socket) {
                             cityArr.push(cityData[0])
                         }
                         else {
-                            cityData[0].temp = Number((cityData[0].temp * 1.8) + 32) + 'F';
+                            cityData[0].temp = (Number((cityData[0].temp * 1.8) + 32).toFixed(2)) + 'F';
                             cityArr.push(cityData[0]);
                         }
                     }
@@ -208,14 +206,13 @@ const returnRouter = function (socket) {
 
                 }
 
-                const now  = new Date();
+                const now = new Date();
                 var time = 0;
-                if (now.getHours() > 12) {
-                    time = `${now.getHours() - 12}:${now.getMinutes()}:${now.getSeconds()}PM`;
-                }
-                else {
-                    time = `${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}AM`;
-                }
+                var hours = (now.getHours() > 12) ? now.getHours() - 12 : now.getHours();
+                var minutes = (now.getMinutes() < 10) ? '0' + now.getMinutes() : now.getMinutes();
+                var seconds = (now.getSeconds() < 10) ? '0' + now.getSeconds() : now.getSeconds();
+
+                time = `${hours}:${minutes}:${seconds}PM`;
                 currentTime = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()} - ${time}`;
                 var obj = {
                     socketID: userData.socketID,
@@ -237,8 +234,6 @@ const returnRouter = function (socket) {
 
     route.post('/addcity', async (req, res) => {
         var userData = await weatherApp.find({ email: req.body.email });
-        console.log(req.body.city);
-        console.log(req.body.tempUnit);
         const city = req.body.city.toLowerCase();
         const cond = (value) => value.name !== city;
         const cityNotExist = userData[0].city.every(cond);
